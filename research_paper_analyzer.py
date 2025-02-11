@@ -380,7 +380,7 @@ def get_structured_output(prompt: str) -> ResearchPaper:
     
     ### Expected output format: 
     {format_instructions}
-        """
+    """
     
     try:
         user_message = PromptTemplate(
@@ -440,6 +440,7 @@ def main():
             print(f"\n{'='*80}")
             print(f"Processing PDF {i+1}: {pdf_path}")
             print(f"{'='*80}")
+            paper_name = os.path.basename(pdf_path).replace('.pdf', '')
             
             # Parse PDF content
             try:
@@ -449,7 +450,7 @@ def main():
                 print(f"Error processing {pdf_path}: {e}")
                 continue
                         
-            output_file = f'paper_analysis_{i+1}.json'
+            output_file = f'parsed_{paper_name}_{i+1}.json'
             with open(output_file, 'w') as f:
                 json.dump(result, f, indent=4)
 

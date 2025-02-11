@@ -1,20 +1,16 @@
-# 🔬 Research Paper Analyzer
+# 🎯 Universal JSON Output from LLM
 
-Transform academic papers into structured, actionable insights with this powerful research paper analysis tool. Built with state-of-the-art language models and designed for researchers, academics, and knowledge enthusiasts.
+A flexible approach to get JSON outputs from Large Language Models (LLMs) of any complexity. 
+Tested to work more efficient than other solutions indluding `response_format={ "type": "json_object" }` and other approaches.
 
-## ✨ Features
+See Medium post: [Forcing LLM JSON Outputs: How to Make LLMs Output Complex JSONs](https://medium.com/@d.zagirowa/forcing-llm-json-outputs-how-to-make-llm-output-complex-jsons-a8bb00e87f71)
 
-- **Comprehensive Paper Analysis**: Extract key information including research questions, methods, findings, and conclusions
-- **Domain Intelligence**: Automatically categorizes papers across 20+ research domains, from Computer Science to Neuroscience
-- **Structured Output**: Generates clean, structured JSON output for easy integration with other tools
-- **PDF Support**: Direct analysis of PDF research papers
-- **Rich Metadata Extraction**: Captures detailed information about:
-  - Authors and affiliations
-  - Experimental setups and methodologies
-  - Datasets and computational resources
-  - Equipment specifications
-  - Performance metrics
-  - Citations and references
+## 🔑 Key Features
+
+- **Flexible Schema Definition**: Define your desired output structure using Python dataclasses (use LLM to help you convert text description of the output to dataclass definition)
+- **Type Safety**: Built-in type validation ensures your LLM outputs match your schema
+- **Nested Structures**: Handle complex, deeply nested JSON structures with ease
+- **Universal Applicability**: Adapt the approach to any use case by modifying the output dataclass
 
 ## 🚀 Getting Started
 
@@ -29,32 +25,78 @@ pip install -r requirements.txt
 OPENAI_API_KEY=your_api_key_here
 ```
 
-## 📊 Usage
+## 💡 How It Works
 
-Analyze a research paper:
+1. **Define Your Schema**: Create a Python dataclass that describes your desired JSON structure
+
+```python
+# Example: Define your output structure
+from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class YourCustomOutput:
+    title: str
+    categories: List[str]
+    metadata: dict
+    # Add any fields you need to match your use case
+```
+2. **Prompt Engineering**: Use JsonOutputParser to auto-generates JSON Schema from Pydantic model. Insert it in your prompt with {format_instructions}
+
+```python
+from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+
+parser = JsonOutputParser(pydantic_object=ResearchPaper)
+    
+prompt_template = """Your main task is to extract comprehensive information from the following text and output it in the defined JSON format.
+
+### TEXT: 
+{user_input}
+
+### OUTPUT FORMAT: 
+{format_instructions}
+"""
+
+user_message = PromptTemplate(
+      template=prompt_template,
+      input_variables=["user_input"],
+      partial_variables={"format_instructions": parser.get_format_instructions()},
+    )
+```
+
+3. **Run the Chain & Parse**: Now you can run the llm with the prompt or create a chain for easy parsing directly to JSON
+
+```python
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+        api_key=os.getenv('OPENAI_API_KEY'),
+        model="gpt-4o-mini", 
+        temperature=0.3  # Lower temperature for more factual outputs
+    )
+chain = user_message | llm | parser
+json_output = chain.invoke({"user_input": text_to_parse})    
+
+```
+
+## 📊 Example Use Case - Research Paper Analyzer
+
+This repository includes a practical example that transforms academic papers into structured data. To try it:
+
 ```bash
 python research_paper_analyzer.py path/to/your/paper.pdf
 ```
 
-The analyzer will generate a detailed JSON output file containing structured information about the paper.
+The analyzer will generate a detailed JSON output file containing structured information based on the defined schema.
 
-## 🏗️ Architecture
+## 🔄 Adapt to Your Needs
 
-Built with modern Python tools and libraries:
-- LangChain for robust language model interactions
-- Pydantic for type-safe data modeling
-- PyPDF for PDF processing
-- OpenAI's language models for advanced text analysis
+To use this approach for your own use case:
 
-## 📝 Output Format
-
-The analyzer generates comprehensive, structured data including:
-- Basic paper information (title, authors, publication details)
-- Research context and objectives
-- Methodology details
-- Key findings and conclusions
-- Technical specifications and resources used
-- Citation information
+1. Create a new dataclass that defines your desired output structure
+2. Modify the prompt template to match your domain
+3. Update the validation logic if needed
 
 ---
 Built with 💡 for the research community

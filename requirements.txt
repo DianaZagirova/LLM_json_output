@@ -1,0 +1,16 @@
+# Dependencies
+openai>=1.57.2
+pydantic>=2.10.3
+pydantic-settings>=2.6.1
+pydantic_core>=2.27.1
+python-dotenv
+langchain>=0.3.11
+langchain-community>=0.3.11
+langchain-core>=0.3.24
+langchain-openai>=0.2.12
+html2text>=2024.2.26
+httpcore>=1.0.5
+httptools>=0.6.4
+httpx>=0.27.0
+email-validator>=2.1.0
+pypdf>=3.17.1
