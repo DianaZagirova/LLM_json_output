@@ -355,74 +355,151 @@ class ResearchPaper(BaseModel):
             }
         }
 
-def get_structured_output(prompt: str) -> ResearchPaper:
+def get_structured_output(paper_data: Dict[str, Any]) -> ResearchPaper:
     """
-    Extract structured information from scientific research papers using LangChain and Azure OpenAI.
+    Extract structured information from scientific research papers using LangChain and OpenAI.
     
     Args:
-        prompt: Description or text from a research paper
+        paper_data: Dictionary containing paper text and metadata
         
     Returns:
         ResearchPaper: Comprehensive structured information about the paper
     """
     llm = ChatOpenAI(
         api_key=os.getenv('OPENAI_API_KEY'),
-        model="gpt-4o-mini", 
-        temperature=0.3  # Lower temperature for more factual outputs
+        model="gpt-4",  # Using GPT-4 for better extraction
+        temperature=0.2  # Lower temperature for more consistent outputs
     )
     
     parser = JsonOutputParser(pydantic_object=ResearchPaper)
     
-    prompt_template = """Your main task is to extract comprehensive information about the scientific research paper from the following text and output it in the defined JSON format.
-
-    ### Paper text: 
-    {user_input}
+    # Create a more detailed prompt that leverages section information
+    prompt_template = """
+    You are a research paper analysis expert. Your task is to extract comprehensive information from the scientific paper and structure it according to the specified JSON format.
     
-    ### Expected output format: 
+    Guidelines:
+    1. Focus on factual information present in the text
+    2. For numerical values, maintain original precision
+    3. Separate distinct concepts into different list items
+    4. Preserve original technical terminology
+    5. Include all relevant citations and references
+    
+    Paper Structure:
+    {section_info}
+    
+    Full Paper Text:
+    {full_text}
+    
+    Required Output Format:
     {format_instructions}
+    
+    Important: Ensure all extracted information is directly supported by the paper content.
     """
+    
+    # Create section info summary
+    section_info = "\n".join([f"{k.title()}: {v[:200]}..." 
+                             for k, v in paper_data['sections'].items() 
+                             if v])
     
     try:
         user_message = PromptTemplate(
             template=prompt_template,
-            input_variables=["user_input"],
+            input_variables=["full_text", "section_info"],
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
+        
+        # Create chain with error handling
         chain = user_message | llm | parser
 
         with get_openai_callback() as cb:
-            output = chain.invoke({"user_input": prompt})            
+            output = chain.invoke({
+                "full_text": paper_data['full_text'],
+                "section_info": section_info
+            })
         
-        
+        # Log performance metrics
         logger.info(f"Successfully parsed paper")
-        logger.info(f"Callback: {cb}")
+        logger.info(f"Tokens used: {cb.total_tokens} (Prompt: {cb.prompt_tokens}, Completion: {cb.completion_tokens})")
+        logger.info(f"Cost: ${cb.total_cost:.4f}")
+        
         return output
 
     except Exception as e:
         logger.error(f"Error parsing paper data: {str(e)}")
         raise
 
-def parse_pdf(pdf_path: str) -> str:
+def extract_section_text(text: str) -> Dict[str, str]:
     """
-    Parse a PDF file and return its text content.
+    Extract text from common paper sections using regex patterns.
+    
+    Args:
+        text: Raw text from the paper
+        
+    Returns:
+        Dict[str, str]: Mapping of section names to their content
+    """
+    import re
+    
+    # Common section patterns in research papers
+    section_patterns = {
+        'abstract': r'(?i)(abstract|summary)\s*\n+([^\n]+(?:\n(?!introduction|background|related work|methodology|methods|results|discussion|conclusion)[^\n]+)*)',
+        'introduction': r'(?i)(introduction|background)\s*\n+([^\n]+(?:\n(?!related work|methodology|methods|results|discussion|conclusion)[^\n]+)*)',
+        'methods': r'(?i)(methodology|methods|experimental setup)\s*\n+([^\n]+(?:\n(?!results|discussion|conclusion)[^\n]+)*)',
+        'results': r'(?i)(results|findings)\s*\n+([^\n]+(?:\n(?!discussion|conclusion)[^\n]+)*)',
+        'discussion': r'(?i)(discussion)\s*\n+([^\n]+(?:\n(?!conclusion)[^\n]+)*)',
+        'conclusion': r'(?i)(conclusion|conclusions|concluding remarks)\s*\n+([^\n]+(?:\n(?!references|bibliography)[^\n]+)*)',
+        'references': r'(?i)(references|bibliography)\s*\n+([^\n]+(?:\n[^\n]+)*$)'
+    }
+    
+    sections = {}
+    for section, pattern in section_patterns.items():
+        match = re.search(pattern, text)
+        if match:
+            sections[section] = match.group(2).strip()
+    
+    return sections
+
+def parse_pdf(pdf_path: str) -> Dict[str, Any]:
+    """
+    Parse a PDF file and return structured content.
     
     Args:
         pdf_path: Path to the PDF file
         
     Returns:
-        str: Extracted text from the PDF
+        Dict[str, Any]: Structured content from the PDF
     """
     try:
         # Load PDF and extract text
         loader = PyPDFLoader(pdf_path)
         pages = loader.load()
         
-        # Combine text from all pages
-        full_text = ""
-        for page in pages:
-            full_text += page.page_content + "\n\n"
+        # Extract metadata and text
+        metadata = {
+            'num_pages': len(pages),
+            'page_numbers': True,
+            'has_figures': any('Figure' in page.page_content for page in pages)
+        }
         
-        return full_text
+        # Combine text from all pages with smart newline handling
+        full_text = ""
+        for i, page in enumerate(pages):
+            # Remove hyphenation at end of lines
+            cleaned_text = re.sub(r'-\s*\n', '', page.page_content)
+            # Remove multiple spaces and normalize newlines
+            cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
+            # Add smart paragraph breaks
+            cleaned_text = re.sub(r'\. +(?=[A-Z])', '.\n\n', cleaned_text)
+            full_text += cleaned_text + "\n\n"
+        
+        # Extract sections
+        sections = extract_section_text(full_text)
+        
+        return {
+            'metadata': metadata,
+            'full_text': full_text,
+            'sections': sections
+        }
         
     except Exception as e:
         logger.error(f"Error parsing PDF: {e}")
@@ -432,7 +509,12 @@ def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Analyze scientific research papers from PDF files')
     parser.add_argument('pdf_paths', nargs='+', help='Paths to PDF files to analyze')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
     args = parser.parse_args()
+    
+    # Configure logging based on verbosity
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(level=log_level)
     
     try:
         # Process each PDF file
@@ -440,26 +522,53 @@ def main():
             print(f"\n{'='*80}")
             print(f"Processing PDF {i+1}: {pdf_path}")
             print(f"{'='*80}")
+            
             paper_name = os.path.basename(pdf_path).replace('.pdf', '')
             
-            # Parse PDF content
             try:
-                paper_text = parse_pdf(pdf_path)
-                result = get_structured_output(paper_text)
-            except Exception as e:
-                print(f"Error processing {pdf_path}: {e}")
-                continue
-                        
-            output_file = f'parsed_{paper_name}_{i+1}.json'
-            with open(output_file, 'w') as f:
-                json.dump(result, f, indent=4)
+                # Step 1: Parse PDF and extract structured content
+                print("\nExtracting text and structure...")
+                paper_data = parse_pdf(pdf_path)
+                
+                if args.verbose:
+                    print(f"Found {len(paper_data['sections'])} sections:")
+                    for section in paper_data['sections'].keys():
+                        print(f"  - {section}")
+                
+                # Step 2: Extract structured information
+                print("\nAnalyzing content...")
+                result = get_structured_output(paper_data)
+                
+                # Step 3: Save results
+                output_file = f'parsed_{paper_name}_{i+1}.json'
+                with open(output_file, 'w') as f:
+                    json.dump(result, f, indent=4)
 
-            print(f"\nFull analysis saved to {output_file}")
+                print(f"\nAnalysis complete! Results saved to {output_file}")
+                
+                # Print summary if verbose
+                if args.verbose:
+                    print("\nExtracted Information Summary:")
+                    print(f"  Title: {result.title}")
+                    print(f"  Authors: {len(result.authors)}")
+                    print(f"  Main Findings: {len(result.main_findings)}")
+                    if result.citations:
+                        print(f"  Citations: {len(result.citations)}")
+                
+            except Exception as e:
+                logger.error(f"Error processing {pdf_path}: {e}")
+                if args.verbose:
+                    import traceback
+                    logger.error(traceback.format_exc())
+                continue
             
             print(f"\n{'='*80}\n")
             
     except Exception as e:
-        logger.error(f"Error analyzing paper: {e}")
+        logger.error(f"Error in main execution: {e}")
+        if args.verbose:
+            import traceback
+            logger.error(traceback.format_exc())
         raise
 
 if __name__ == "__main__":
