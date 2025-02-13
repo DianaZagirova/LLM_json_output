@@ -12,6 +12,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.callbacks import get_openai_callback
 import json
+import re
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -367,7 +368,7 @@ def get_structured_output(paper_data: Dict[str, Any]) -> ResearchPaper:
     """
     llm = ChatOpenAI(
         api_key=os.getenv('OPENAI_API_KEY'),
-        model="gpt-4",  # Using GPT-4 for better extraction
+        model="gpt-4o",  # Using GPT-4 for better extraction
         temperature=0.2  # Lower temperature for more consistent outputs
     )
     

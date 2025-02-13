@@ -5,49 +5,57 @@
             "name": "Ashish Vaswani",
             "affiliation": "Google Brain",
             "email": "avaswani@google.com",
-            "is_corresponding": true
+            "is_corresponding": true,
+            "orcid": null
         },
         {
             "name": "Noam Shazeer",
             "affiliation": "Google Brain",
             "email": "noam@google.com",
-            "is_corresponding": false
+            "is_corresponding": false,
+            "orcid": null
         },
         {
             "name": "Niki Parmar",
             "affiliation": "Google Research",
             "email": "nikip@google.com",
-            "is_corresponding": false
+            "is_corresponding": false,
+            "orcid": null
         },
         {
             "name": "Jakob Uszkoreit",
             "affiliation": "Google Research",
             "email": "usz@google.com",
-            "is_corresponding": false
+            "is_corresponding": false,
+            "orcid": null
         },
         {
             "name": "Llion Jones",
             "affiliation": "Google Research",
             "email": "llion@google.com",
-            "is_corresponding": false
+            "is_corresponding": false,
+            "orcid": null
         },
         {
             "name": "Aidan N. Gomez",
             "affiliation": "University of Toronto",
             "email": "aidan@cs.toronto.edu",
-            "is_corresponding": false
+            "is_corresponding": false,
+            "orcid": null
         },
         {
             "name": "\u0141ukasz Kaiser",
             "affiliation": "Google Brain",
             "email": "lukaszkaiser@google.com",
-            "is_corresponding": false
+            "is_corresponding": false,
+            "orcid": null
         },
         {
             "name": "Illia Polosukhin",
             "affiliation": "Google Research",
             "email": "illia.polosukhin@gmail.com",
-            "is_corresponding": false
+            "is_corresponding": false,
+            "orcid": null
         }
     ],
     "publication_date": "2017-12-06",
@@ -60,30 +68,31 @@
         "neural networks"
     ],
     "domains": [
-        "computer_science",
         "artificial_intelligence",
-        "data_science"
+        "computer_science"
     ],
-    "study_type": "experimental",
+    "study_type": "computational",
     "research_questions": [
-        "How can we improve sequence transduction models?",
-        "Can attention mechanisms replace recurrence in neural networks?"
+        "Can a model architecture based solely on attention mechanisms outperform traditional recurrent and convolutional models in sequence transduction tasks?"
     ],
-    "methods_summary": "We introduce the Transformer architecture based entirely on self-attention mechanisms, eliminating the need for recurrent layers.",
+    "methods_summary": "The Transformer model architecture is based solely on attention mechanisms, eliminating recurrence and convolutions. It uses stacked self-attention and point-wise, fully connected layers for both the encoder and decoder.",
     "main_findings": [
-        "The Transformer achieves state-of-the-art results on machine translation tasks.",
-        "It is significantly faster to train compared to existing models."
+        "The Transformer achieves superior quality in machine translation tasks compared to existing models.",
+        "The model is more parallelizable and requires significantly less time to train.",
+        "The Transformer achieves a BLEU score of 28.4 on the WMT 2014 English-to-German translation task.",
+        "The model achieves a BLEU score of 41.8 on the WMT 2014 English-to-French translation task."
     ],
-    "conclusions": "The Transformer model demonstrates that attention mechanisms can effectively replace recurrent layers in sequence transduction tasks, leading to improved performance and training efficiency.",
-    "doi": "10.48550/arXiv.1706.03762",
+    "conclusions": "The Transformer model, based entirely on attention mechanisms, outperforms traditional models in translation tasks and generalizes well to other tasks, offering significant improvements in training efficiency and translation quality.",
+    "doi": null,
     "arxiv_id": "1706.03762",
+    "funding_sources": null,
     "citations_count": null,
-    "background": null,
+    "background": "Recurrent neural networks and convolutional neural networks have been the state of the art for sequence modeling and transduction. Attention mechanisms have been used to improve these models, but the Transformer is the first to rely entirely on attention.",
     "hypotheses": null,
     "novelty_claims": [
-        "First model relying entirely on attention mechanisms",
-        "Superior parallelization capabilities",
-        "State-of-the-art results on translation tasks"
+        "First model relying entirely on attention mechanisms.",
+        "Superior parallelization capabilities.",
+        "State-of-the-art results on translation tasks."
     ],
     "theoretical_framework": null,
     "study_design": null,
@@ -99,18 +108,15 @@
         {
             "metric_name": "BLEU",
             "value": 28.4,
-            "confidence_interval": [
-                28.1,
-                28.7
-            ],
-            "comparison_baseline": "GNMT",
+            "confidence_interval": null,
+            "comparison_baseline": "Existing best results",
             "improvement": 2.0
         },
         {
             "metric_name": "BLEU",
             "value": 41.8,
             "confidence_interval": null,
-            "comparison_baseline": "previous state-of-the-art",
+            "comparison_baseline": "Existing best results",
             "improvement": null
         }
     ],
@@ -124,7 +130,11 @@
     "implications": null,
     "applications": null,
     "societal_impact": null,
-    "future_work": null,
+    "future_work": [
+        "Extend the Transformer to problems involving input and output modalities other than text.",
+        "Investigate local, restricted attention mechanisms to efficiently handle large inputs and outputs such as images, audio, and video.",
+        "Make generation less sequential."
+    ],
     "data_availability": null,
     "code_available": true,
     "code_url": "https://github.com/tensorflow/tensor2tensor",
@@ -138,7 +148,7 @@
             "name": "WMT 2014 English-German",
             "category": "text",
             "size": "4.5 million sentence pairs",
-            "collection_method": "standard dataset",
+            "collection_method": "Standard dataset for machine translation",
             "time_period": null,
             "location": null,
             "source": null,
@@ -148,8 +158,8 @@
         {
             "name": "WMT 2014 English-French",
             "category": "text",
-            "size": "36 million sentences",
-            "collection_method": "standard dataset",
+            "size": "36 million sentence pairs",
+            "collection_method": "Standard dataset for machine translation",
             "time_period": null,
             "location": null,
             "source": null,
@@ -163,20 +173,24 @@
             "model": "NVIDIA P100",
             "quantity": 8,
             "memory": "16 GB",
-            "provider": "Google Cloud",
-            "hours_used": 84,
+            "provider": null,
+            "hours_used": 84.0,
             "cost_estimate": null
         }
     ],
     "experimental_setup": {
-        "batch_size": 4096,
-        "num_epochs": 100,
+        "batch_size": 25000,
+        "num_epochs": 100000,
         "optimizer": "Adam",
         "learning_rate": 0.0001,
         "loss_function": "cross_entropy",
         "regularization": {
             "dropout": 0.1,
             "label_smoothing": 0.1
-        }
-    }
+        },
+        "data_augmentation": null
+    },
+    "ethical_approval": null,
+    "clinical_relevance": null,
+    "patient_demographics": null
 }
